@@ -24,16 +24,38 @@ def euclidean_distance(city_a, city_b):
 
 
 class Node:
-    def __init__(self, name, posx, posy):
+    def __init__(self, name, position):
         self.name = name
-        self.posx = posx
-        self.posy = posy
+        self.position = position
 
 
 class Graph:
     def __init__(self, file_name):
+        self.file_name = file_name
+        self.node_list = self.get_node_list()
+    
+    def get_node_list(self):
+        node_list = []
+        try:
+            with open(self.file_name) as file_cities:
+                for city in file_cities.readlines():
+                    city = city.split(', ')
+                    node_list.append(Node(city[0], (city[1], city[2]))
+            return node_list
+        except Exception:
+            print('Some thing was wrong')
+            quit()
+    
+    def nearest_n(self):
+        for index, city in enumerate(self.node_list[1:], 1):
+            for pos, ele in enumerate(self.node_list[index:], index):
+                
+            
         
 
+def main():
+    pass
 
 
 if __name__ == '__main__':
+    main()

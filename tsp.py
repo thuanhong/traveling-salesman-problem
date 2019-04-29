@@ -37,7 +37,35 @@ def swap_content(node_a, node_b):
     return True
 
 
+def calculate_edge(city_i, city_j, city_k):
+    """
+    calculate Cik + Ckj - Cij
+    """
+    distance_ik = euclidean_distance(city_i.position, city_k.position)
+    distance_kj = euclidean_distance(city_k.position, city_j.position)
+    distance_ij = euclidean_distance(city_i.position, city_j.position)
+    return distance_ik + distance_kj - distance_ij
+
+
+def calculate_cost(path):
+    """
+    calculate length of cites visited
+    @param path : All cities are arranged so that the roads passing through the cities are the shortest possible
+    @return length of roads passing through the cities
+    """
+    cost = 0
+    for i, _ in enumerate(path[1:], 1):
+        temp_cost = euclidean_distance(path[i].position, path[i-1].position)
+        cost += temp_cost
+    return cost
+
+
 def print_result(result):
+    """
+    display name of cities
+    @param result : include roads passing through the cities and length of roads passing through the cities
+    @return None
+    """
     print(result[0][0].name, end=' ')
     for city in result[0][1:]:
         print('->', end=' ')
@@ -47,12 +75,18 @@ def print_result(result):
 
 
 class Node:
+    """
+    Class contain name of cities and position of its
+    """
     def __init__(self, name, position):
         self.name = name
         self.position = position
 
 
 class Graph:
+    """
+    
+    """
     def __init__(self, file_name):
         self.file_name = file_name
         self.node_list = self.get_node_list()
@@ -68,6 +102,17 @@ class Graph:
         except Exception:
             print('Invalid file')
             quit()
+    
+    def Initialization(self):
+        min_distance = euclidean_distance(self.node_list[0].position, self.node_list[1].position)
+        closest_city = self.node_list[1]
+        for index, _ in enumerate(self.node_list[2:], 2):
+            temp_min_distance = euclidean_distance(self.node_list[0].position, self.node_list[index].position)
+            if min_distance > temp_min_distance:
+                min_distance = temp_min_distance
+                closest_city = self.node_list[index]
+        self.node_list.remove(closest_city)
+        return [self.node_list.pop(0), closest_city]
 
 
 class nearest_n_ip(Graph):
@@ -111,54 +156,57 @@ class nearest_n(Graph):
         return path, cost
 
 
+class nearest_i_abr(Graph):
+    def __init__(self, file_name):
+        Graph.__init__(self, file_name)
+        self.tours = self.Initialization()
+
+    def find_shortest_path(self):
+        while self.node_list:
+            min_cost = calculate_edge(self.tours[0], self.tours[1], self.node_list[0])
+            position_insert = 1
+            for index, _ in enumerate(self.tours[2:], 2):
+                temp_cost = calculate_edge(self.tours[index-1], self.tours[index], self.node_list[0])
+                if min_cost > temp_cost:
+                    min_cost = temp_cost
+                    position_insert = index
+            else:
+                self.tours.insert(position_insert, self.node_list.pop(0))
+        return self.tours, calculate_cost(self.tours)
+
+
 class nearest_i(Graph):
     def __init__(self, file_name):
         Graph.__init__(self, file_name)
         self.tours = self.Initialization()
-    
-    def calculate_edge(self, city_i, city_j, city_k):
-        distance_ik = euclidean_distance(city_i.position, city_k.position)
-        distance_kj = euclidean_distance(city_k.position, city_j.position)
-        distance_ij = euclidean_distance(city_i.position, city_j.position)
-        return distance_ik + distance_kj - distance_ij
-    
-    def Initialization(self):
-        min_distance = euclidean_distance(self.node_list[0].position, self.node_list[1].position)
-        closest_city = self.node_list[1]
-        for index, _ in enumerate(self.node_list[2:], 2):
-            temp_min_distance = euclidean_distance(self.node_list[0].position, self.node_list[index].position)
-            if min_distance > temp_min_distance:
-                min_distance = temp_min_distance
-                closest_city = self.node_list[index]
-        self.node_list.remove(closest_city)
-        return [self.node_list.pop(0), closest_city]
-    
-    def calculate_cost(self):
-        cost = 0
-        for i, _ in enumerate(self.tours[1:], 1):
-            temp_cost = euclidean_distance(self.tours[i].position, self.tours[i-1].position)
-            cost += temp_cost
-        return cost
 
     def find_shortest_path(self):
         while self.node_list:
-            min_cost = self.calculate_edge(self.tours[0], self.tours[1], self.node_list[0])
+            min_distance = euclidean_distance(self.tours[-1].position, self.node_list[0].position)
+            position_min = 0
+            for index, _ in enumerate(self.node_list[1:], 1):
+                temp_min_distance = euclidean_distance(self.tours[-1].position, self.node_list[index].position)
+                if min_distance > temp_min_distance:
+                    min_distance = temp_min_distance
+                    position_min = index
+
+            min_cost = calculate_edge(self.tours[0], self.tours[1], self.node_list[position_min])
             position_insert = 1
-            for x, _ in enumerate(self.tours[2:], 2):
-                temp_cost = self.calculate_edge(self.tours[x-1], self.tours[x], self.node_list[0])
+            for index, _ in enumerate(self.tours[2:], 2):
+                temp_cost = calculate_edge(self.tours[index-1], self.tours[index], self.node_list[position_min])
                 if min_cost > temp_cost:
                     min_cost = temp_cost
-                    position_insert = x
+                    position_insert = index
             else:
-                self.tours.insert(position_insert, self.node_list.pop(0))
-            
-        return self.tours, self.calculate_cost()
-
+                self.tours.insert(position_insert, self.node_list.pop(position_min))
+        return self.tours, calculate_cost(self.tours)
         
+
 def main():
     started = time()  # start calculate time run
     algorithm = {
         'nearest_i':nearest_i,
+        'nearest_i_abr':nearest_i_abr,
         'nearest_n':nearest_n,
         'nearest_n_ip':nearest_n_ip
     }

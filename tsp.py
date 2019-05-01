@@ -74,16 +74,6 @@ def print_result(result):
     print('Cost : ', result[1])
 
 
-def build_matrix(list_city):
-    matrix = []
-    for x in list_city:
-        temp = []
-        for y in list_city:
-            temp.append(euclidean_distance(x, y))
-        matrix.append(temp)
-    return matrix
-
-
 class Node:
     """
     Class contain name of cities and position of its
@@ -172,17 +162,19 @@ class nearest_i_abr(Graph):
         self.tours = self.Initialization()
 
     def find_shortest_path(self):
+        cost = euclidean_distance(self.tours[0].position, self.tours[1].position)
         while self.node_list:
-            min_cost = calculate_edge(self.tours[0], self.tours[1], self.node_list[0])
-            position_insert = 1
-            for index, _ in enumerate(self.tours[2:], 2):
+            min_cost = calculate_edge(self.tours[-1], self.tours[0], self.node_list[0])
+            position_insert = 0
+            for index, _ in enumerate(self.tours[1:], 1):
                 temp_cost = calculate_edge(self.tours[index-1], self.tours[index], self.node_list[0])
                 if min_cost > temp_cost:
                     min_cost = temp_cost
                     position_insert = index
             else:
                 self.tours.insert(position_insert, self.node_list.pop(0))
-        return self.tours, calculate_cost(self.tours)
+                cost = cost + min_cost
+        return self.tours, cost
 
 
 class nearest_i(Graph):

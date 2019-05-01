@@ -74,6 +74,16 @@ def print_result(result):
     print('Cost : ', result[1])
 
 
+def build_matrix(list_city):
+    matrix = []
+    for x in list_city:
+        temp = []
+        for y in list_city:
+            temp.append(euclidean_distance(x, y))
+        matrix.append(temp)
+    return matrix
+
+
 class Node:
     """
     Class contain name of cities and position of its
@@ -142,13 +152,13 @@ class nearest_n(Graph):
         cost = 0
 
         while self.node_list:
-            temp = []
-
-            for node in self.node_list:
-                distance = euclidean_distance(min_node.position, node.position)
-                temp.append((node, distance))
-
-            min_node, min_cost = min(temp, key=lambda i: i[1])
+            min_cost = euclidean_distance(path[-1].position, self.node_list[0].position)
+            min_node = self.node_list[0]
+            for node in self.node_list[1:]:
+                distance = euclidean_distance(path[-1].position, node.position)
+                if min_cost > distance:
+                    min_cost = distance
+                    min_node = node
             cost += min_cost
             path.append(min_node)
             self.node_list.remove(min_node)
@@ -182,13 +192,17 @@ class nearest_i(Graph):
 
     def find_shortest_path(self):
         while self.node_list:
-            min_distance = euclidean_distance(self.tours[-1].position, self.node_list[0].position)
+            min_distance = float('inf')
             position_min = 0
-            for index, _ in enumerate(self.node_list[1:], 1):
-                temp_min_distance = euclidean_distance(self.tours[-1].position, self.node_list[index].position)
-                if min_distance > temp_min_distance:
-                    min_distance = temp_min_distance
-                    position_min = index
+
+            for index, _ in enumerate(self.node_list):
+                temp_cost = 0
+                for city in self.tours:
+                    temp_cost += euclidean_distance(city.position, self.node_list[index].position)
+                else:
+                    if min_distance > temp_cost:
+                        min_distance = temp_cost
+                        position_min = index
 
             min_cost = calculate_edge(self.tours[0], self.tours[1], self.node_list[position_min])
             position_insert = 1

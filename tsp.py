@@ -221,8 +221,9 @@ class heu(Graph):
                 temp_cost = euclidean_distance(self.tours[index-1].position, self.tours[index].position)
                 if temp_cost > euclidean_distance(self.tours[index-1].position, self.node_list[0].position):
                     self.tours.insert(index, self.node_list.pop(0))
-            # else:
-            #     self.tours.append(self.node_list.pop(0))
+                    break
+            else:
+                self.tours.append(self.node_list.pop(0))
         return self.tours, calculate_cost(self.tours)
         
 

@@ -84,9 +84,6 @@ class Node:
 
 
 class Graph:
-    """
-    
-    """
     def __init__(self, file_name):
         self.file_name = file_name
         self.node_list = self.get_node_list()
@@ -123,11 +120,13 @@ class nearest_n_ip(Graph):
         cost = 0
         for index, _ in enumerate(self.node_list[1:], 1):
             min_distance = euclidean_distance(self.node_list[index-1].position, self.node_list[index].position)
+            position_insert = index
             for temp_index, _ in enumerate(self.node_list[index+1:], index+1):
                 temp_min_distance = euclidean_distance(self.node_list[index-1].position, self.node_list[temp_index].position)
                 if min_distance > temp_min_distance:
                     min_distance = temp_min_distance
-                    swap_content(self.node_list[index], self.node_list[temp_index])
+                    position_insert = temp_index
+            swap_content(self.node_list[index], self.node_list[position_insert])
             cost += min_distance
         return self.node_list, cost
 
@@ -137,8 +136,7 @@ class nearest_n(Graph):
         Graph.__init__(self, file_name)
 
     def find_shortest_path(self):
-        min_node = self.node_list.pop(0)
-        path = [min_node]
+        path = [self.node_list.pop(0)]
         cost = 0
 
         while self.node_list:
@@ -156,7 +154,7 @@ class nearest_n(Graph):
         return path, cost
 
 
-class nearest_i_abr(Graph):
+class random_i(Graph):
     def __init__(self, file_name):
         Graph.__init__(self, file_name)
         self.tours = self.Initialization()
@@ -206,15 +204,40 @@ class nearest_i(Graph):
             else:
                 self.tours.insert(position_insert, self.node_list.pop(position_min))
         return self.tours, calculate_cost(self.tours)
-        
+
+
+class two_opt(Graph):
+    def __init__(self, file_name):
+        Graph.__init__(self, file_name)
+    
+
+    def find_shortest_path(self):
+        route = nearest_n(self.file_name).find_shortest_path()[0]
+        best = route
+        improved = True
+        while improved:
+            improved = False
+            for i in range(1, len(route) - 2):
+                for j in range(i + 1, len(route)):
+                    if j - i == 1:
+                        continue  # changes nothing, skip then
+                    new_route = route[:]
+                    new_route[i:j] = route[j - 1:i - 1:-1]
+                    if calculate_cost(new_route) < calculate_cost(best):
+                        best = new_route
+                        improved = True
+            route  = best
+        return best, 0
+
 
 def main():
     started = time()  # start calculate time run
     algorithm = {
         'nearest_i':nearest_i,
-        'nearest_i_abr':nearest_i_abr,
+        'random_i':random_i,
         'nearest_n':nearest_n,
-        'nearest_n_ip':nearest_n_ip
+        'nearest_n_ip':nearest_n_ip,
+        'two_opt':two_opt
     }
     args = take_argument()
     if args.algo in algorithm:

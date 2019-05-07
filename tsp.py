@@ -2,6 +2,7 @@
 from argparse import ArgumentParser
 from time import time
 from math import sqrt
+import tsp
 
 
 def take_argument():
@@ -55,8 +56,7 @@ def calculate_cost(path):
     """
     cost = 0
     for i, _ in enumerate(path[1:], 1):
-        temp_cost = euclidean_distance(path[i].position, path[i-1].position)
-        cost += temp_cost
+        cost += euclidean_distance(path[i].position, path[i-1].position)
     return cost
 
 
@@ -71,6 +71,7 @@ def print_result(result):
         print('->', end=' ')
         print(city.name, end=' ')
     print()
+    print('city : ', len(result[0]))
     print('Cost : ', result[1])
 
 
@@ -121,12 +122,15 @@ class nearest_n_ip(Graph):
         for index, _ in enumerate(self.node_list[1:], 1):
             min_distance = euclidean_distance(self.node_list[index-1].position, self.node_list[index].position)
             position_insert = index
+
             for temp_index, _ in enumerate(self.node_list[index+1:], index+1):
                 temp_min_distance = euclidean_distance(self.node_list[index-1].position, self.node_list[temp_index].position)
                 if min_distance > temp_min_distance:
                     min_distance = temp_min_distance
+
                     position_insert = temp_index
             swap_content(self.node_list[index], self.node_list[position_insert])
+
             cost += min_distance
         return self.node_list, cost
 
@@ -162,16 +166,16 @@ class random_i(Graph):
     def find_shortest_path(self):
         cost = euclidean_distance(self.tours[0].position, self.tours[1].position)
         while self.node_list:
-            min_cost = calculate_edge(self.tours[-1], self.tours[0], self.node_list[0])
+            min_cost = calculate_edge(self.tours[0], self.tours[1], self.node_list[0])
             position_insert = 0
-            for index, _ in enumerate(self.tours[1:], 1):
+            for index, _ in enumerate(self.tours[2:], 2):
                 temp_cost = calculate_edge(self.tours[index-1], self.tours[index], self.node_list[0])
                 if min_cost > temp_cost:
                     min_cost = temp_cost
                     position_insert = index
             else:
                 self.tours.insert(position_insert, self.node_list.pop(0))
-                cost = cost + min_cost
+                cost += min_cost
         return self.tours, cost
 
 
@@ -209,7 +213,6 @@ class nearest_i(Graph):
 class two_opt(Graph):
     def __init__(self, file_name):
         Graph.__init__(self, file_name)
-    
 
     def find_shortest_path(self):
         route = nearest_n(self.file_name).find_shortest_path()[0]
@@ -230,6 +233,87 @@ class two_opt(Graph):
         return best, 0
 
 
+class nearest_local(Graph):
+    def __init__(self, file_name):
+        Graph.__init__(self, file_name)
+        self.list_cities = self.get_list_cities()
+    
+    def get_list_cities(self):
+        with open(self.file_name, 'r') as file_csv:
+            output = []
+            for index, city in enumerate(file_csv.readlines()):
+                city = city.split(', ')
+                output.append([float(city[1]), float(city[2]), int(index)])
+            return output
+
+    def find_start_node(self, start_node, sorted_x):
+        for i, c in enumerate(sorted_x):
+            if start_node == c[2]:
+                return i
+
+    def get_inc(self, sorted_x):
+        min_inc = float('inf')
+        for each in range(0, len(sorted_x)-1):
+            inc = abs(sorted_x[each+1][0] - sorted_x[each][0])
+            if min_inc > inc:
+                min_inc = inc
+        return inc
+    
+    def take_nearest_neighbor(self, list_neighbor, pivot, sorted_list_x, coordinate):
+        delta = 0.0
+        min_distance = self.get_inc(sorted_list_x)
+        buffer_x = []
+        while not list_neighbor:
+            delta += min_distance
+            for i, _ in enumerate(sorted_list_x[pivot+1:], pivot+1):
+                if sorted_list_x[i][0] <= coordinate[0] + delta:
+                    if sorted_list_x[i][1] <= coordinate[1] + delta and sorted_list_x[i][1] >= coordinate[1] - delta:
+                        list_neighbor.append(sorted_list_x[i][2])
+                        buffer_x.append(i)
+                else:
+                    break
+
+            for i in range(pivot-1, -1, -1):
+                if sorted_list_x[i][0] >= coordinate[0] - delta:
+                    if sorted_list_x[i][1] <= coordinate[1] + delta and sorted_list_x[i][1] >= coordinate[1] - delta:
+                        list_neighbor.append(sorted_list_x[i][2])
+                        buffer_x.append(i)
+                else:
+                    break
+        return buffer_x
+    
+    def find_shortest_path(self):
+        sorted_list_x = sorted(self.list_cities,key=lambda l:l[0])
+        # sorted_list_y = sorted(self.list_cities,key=lambda l:l[1])
+        current_city = 0
+        pivot = self.find_start_node(current_city, sorted_list_x)
+        cost = 0
+        path = []
+        vetex = len(self.node_list)
+        while True:
+            list_nearest_neighbor = []
+            coordinate = [sorted_list_x[pivot][0], sorted_list_x[pivot][1]]
+            buffer_x = self.take_nearest_neighbor(list_nearest_neighbor, pivot, sorted_list_x, coordinate)
+            min_distance = float('inf')
+            min_index = None
+            for index in list_nearest_neighbor:
+                dist = euclidean_distance(self.list_cities[index], self.list_cities[current_city])
+                if dist < min_distance:
+                    min_distance = dist
+                    min_index = index
+            if min_index:
+                cost += min_distance
+                path.append(self.node_list[min_index])
+                sorted_list_x.pop(pivot)
+                current_city = min_index
+                new_pivot = buffer_x[list_nearest_neighbor.index(min_index)]
+                if new_pivot > pivot:
+                    new_pivot -= 1
+                pivot = new_pivot
+                if len(path) == vetex-1:
+                    return path, cost
+            
+
 def main():
     started = time()  # start calculate time run
     algorithm = {
@@ -237,7 +321,9 @@ def main():
         'random_i':random_i,
         'nearest_n':nearest_n,
         'nearest_n_ip':nearest_n_ip,
-        'two_opt':two_opt
+        'two_opt':two_opt,
+        'nearest_local':nearest_local
+
     }
     args = take_argument()
     if args.algo in algorithm:

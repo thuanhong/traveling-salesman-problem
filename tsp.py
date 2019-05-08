@@ -10,10 +10,10 @@ def take_argument():
     """
     take file name
     @param None
-    @return file name
+    @return file name, name of algorithm
     """
     argument = ArgumentParser()
-    argument.add_argument('-a', "--algo", metavar='algorithm',
+    argument.add_argument('-a', "--algo", metavar='algorithm', default='nearest neghbor',
                           help='choice from [nearest neghbor, nearest insert, random insert, nearest neghbor heuristic]')
     argument.add_argument('file', help='file name contain the name of cities and its position')
     return argument.parse_args()
@@ -119,17 +119,23 @@ class Graph(ABC):
         pass
 
 
-class nearest_n(Graph):
+class Nearest_n(Graph):
     """
-    class contain algorithm nearest neighbor simple and easy implement-
+    class contain algorithm nearest neighbor simple and easy implement
+    starts at a random city and repeatedly visits the nearest city until all have been visited
+    class inherit attribute from class Graph
     """
     def find_shortest_path(self):
+        # create a list output contain the city begin
         path = [self.node_list.pop(0)]
+        # total length road pass thorght all city
         cost = 0
-
         while self.node_list:
+            # declare min cost is eucli distance from last city in the path to the first city in node list
             min_cost = euclidean_distance(path[-1].position, self.node_list[0].position)
+            # declare min node is the first city in node list
             min_node = self.node_list[0]
+            # calculate from the last city in the path to all city in node list
             for node in self.node_list[1:]:
                 distance = euclidean_distance(path[-1].position, node.position)
                 if min_cost > distance:
@@ -138,15 +144,23 @@ class nearest_n(Graph):
             cost += min_cost
             path.append(min_node)
             self.node_list.remove(min_node)
-
         return path, cost
 
 
-class random_i(Graph):
+class Arbitrary_i(Graph):
+    """
+    class contain algorithm arbitrary insert
+    starts at a random city and choice arbitrary city in node list. Then, insert it at the path base on formula Cik + Cjk - Cij
+    class inherit attribute from class Graph
+    """
     def find_shortest_path(self):
+        # create a path with 2 cities include the first city in node list and the city nearest its
         self.tours = self.Initialization()
+        # declare cost is distance from first city in self.tours with self
         cost = euclidean_distance(self.tours[0].position, self.tours[1].position)
+        # insert city have been chosen from node list
         while self.node_list:
+            # calculate cost between the first city and the second city in self.tours and  
             min_cost = calculate_edge(self.tours[0], self.tours[1], self.node_list[0])
             position_insert = 1
             for index, _ in enumerate(self.tours[2:], 2):
@@ -160,7 +174,7 @@ class random_i(Graph):
         return self.tours, cost
 
 
-class nearest_i(Graph):
+class Nearest_i(Graph):
     def take_nearest_node(self):
         min_distance = float('inf')
         position_min = 0
@@ -191,7 +205,15 @@ class nearest_i(Graph):
         return self.tours, calculate_cost(self.tours)
 
 
-class nearest_local(Graph):
+class Nearest_local(Graph):
+    def Init(self):
+        self.list_cities = self.get_list_cities()
+        self.sorted_list_x = sorted(self.list_cities,key=lambda l:l[0])
+        sorted_list_y = sorted(self.list_cities,key=lambda l:l[1])
+        self.current_city = 0
+        self.pivot = self.find_start_node()
+        self.min_distance = min(self.get_inc(self.sorted_list_x), self.get_inc(sorted_list_y))
+    
     def get_list_cities(self):
         """
         create a list contain all city
@@ -204,15 +226,15 @@ class nearest_local(Graph):
                 output.append([float(city[1]), float(city[2]), int(index)])
             return output
 
-    def find_start_node(self, start_node, sorted_x):
+    def find_start_node(self):
         """
         take position of city begin
         @param start_node : numerical order in file csv
         @param sorted_x : a list sorted have been created by function get_list_cities
         @return index of city begin in list sorted_x
         """
-        for index, city in enumerate(sorted_x):
-            if start_node == city[2]:
+        for index, city in enumerate(self.sorted_list_x):
+            if self.current_city == city[2]:
                 return index
 
     def get_inc(self, sorted_x):
@@ -223,72 +245,66 @@ class nearest_local(Graph):
                 min_inc = inc
         return inc
     
-    def take_nearest_neighbor(self, list_neighbor, pivot, sorted_list_x, coordinate, min_distance):
+    def take_nearest_neighbor(self, list_neighbor, coordinate):
         delta = 0.0
         buffer_x = []
         while not list_neighbor:
-            delta += min_distance
-            for i, _ in enumerate(sorted_list_x[pivot+1:], pivot+1):
-                if sorted_list_x[i][0] <= coordinate[0] + delta:
-                    if sorted_list_x[i][1] <= coordinate[1] + delta and sorted_list_x[i][1] >= coordinate[1] - delta:
-                        list_neighbor.append(sorted_list_x[i][2])
+            delta += self.min_distance
+            for i, _ in enumerate(self.sorted_list_x[self.pivot+1:], self.pivot+1):
+                if self.sorted_list_x[i][0] <= coordinate[0] + delta:
+                    if self.sorted_list_x[i][1] <= coordinate[1] + delta and self.sorted_list_x[i][1] >= coordinate[1] - delta:
+                        list_neighbor.append(self.sorted_list_x[i][2])
                         buffer_x.append(i)
                 else:
                     break
 
-            for i in range(pivot-1, -1, -1):
-                if sorted_list_x[i][0] >= coordinate[0] - delta:
-                    if sorted_list_x[i][1] <= coordinate[1] + delta and sorted_list_x[i][1] >= coordinate[1] - delta:
-                        list_neighbor.append(sorted_list_x[i][2])
+            for i in range(self.pivot-1, -1, -1):
+                if self.sorted_list_x[i][0] >= coordinate[0] - delta:
+                    if self.sorted_list_x[i][1] <= coordinate[1] + delta and self.sorted_list_x[i][1] >= coordinate[1] - delta:
+                        list_neighbor.append(self.sorted_list_x[i][2])
                         buffer_x.append(i)
                 else:
                     break
         return buffer_x
     
     def find_shortest_path(self):
-        self.list_cities = self.get_list_cities()
-        sorted_list_x = sorted(self.list_cities,key=lambda l:l[0])
-        sorted_list_y = sorted(self.list_cities,key=lambda l:l[1])
-        current_city = 0
-        pivot = self.find_start_node(current_city, sorted_list_x)
-        min_distance_cities = min(self.get_inc(sorted_list_x), self.get_inc(sorted_list_y))
+        self.Init()
         cost = 0
-        path = [self.node_list[pivot]]
+        path = [self.node_list[self.pivot]]
         vetex = len(self.node_list)
         while True:
             list_nearest_neighbor = []
-            coordinate = [sorted_list_x[pivot][0], sorted_list_x[pivot][1]]
-            buffer_x = self.take_nearest_neighbor(list_nearest_neighbor, pivot, sorted_list_x, coordinate, min_distance_cities)
+            coordinate = [self.sorted_list_x[self.pivot][0], self.sorted_list_x[self.pivot][1]]
+            buffer_x = self.take_nearest_neighbor(list_nearest_neighbor, coordinate)
 
             min_distance = float('inf')
             min_index = None
 
             for index in list_nearest_neighbor:
-                dist = euclidean_distance(self.list_cities[index], self.list_cities[current_city])
+                dist = euclidean_distance(self.list_cities[index], self.list_cities[self.current_city])
                 if dist < min_distance:
                     min_distance = dist
                     min_index = index
             if min_index:
                 cost += min_distance
                 path.append(self.node_list[min_index])
-                sorted_list_x.pop(pivot)
-                current_city = min_index
+                self.sorted_list_x.pop(self.pivot)
+                self.current_city = min_index
                 new_pivot = buffer_x[list_nearest_neighbor.index(min_index)]
-                if new_pivot > pivot:
+                if new_pivot > self.pivot:
                     new_pivot -= 1
-                pivot = new_pivot
+                self.pivot = new_pivot
                 if len(path) == vetex-1:
-                    return path, cost
+                    return path, calculate_cost(path)
             
 
 def main():
     started = time()  # start calculate time run
     algorithm = {
-        'nearest insert':nearest_i,
-        'random insert':random_i,
-        'nearest neighbor':nearest_n,
-        'nearest neighbor heuristic':nearest_local
-
+        'nearest_insert':Nearest_i,
+        'arbitrary_insert':Arbitrary_i,
+        'nearest_neighbor':Nearest_n,
+        'nearest_local':Nearest_local
     }
     args = take_argument()
     if args.algo in algorithm:
@@ -296,6 +312,7 @@ def main():
         print('Time : ',str(time()-started)+'\n') # print time run
     else:
         print('Wrong algorithm')
+        
 
 
 if __name__ == '__main__':
